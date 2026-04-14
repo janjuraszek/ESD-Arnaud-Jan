@@ -12,7 +12,6 @@ int main () {
   camParameters camParams;
   vga_clear();
   
-  
   printf("Initialising camera (this takes up to 3 seconds)!\n" );
   camParams = initOv7670(VGA);
   printf("Done!\n" );
@@ -28,38 +27,37 @@ int main () {
   uint32_t grayPixels;
   vga[2] = swap_u32(2);
   vga[3] = swap_u32((uint32_t) &grayscale[0]);
-
-  // shift by 4 disable , by 8 reset, shift by zero (7) is enable
   while(1) {
     uint32_t * gray = (uint32_t *) &grayscale[0];
     takeSingleImageBlocking((uint32_t) &rgb565[0]);
 
-    
-    asm volatile ("l.nios_rrr r0,r0,%[in2],0xC"::[in2]"r"(7)); // enable
-    
-
+    asm volatile ("l.nios_rrr r0,r0,%[in2],0xC"::[in2]"r"((7<<8) | 7));
 
     for (int line = 0; line < camParams.nrOfLinesPerImage; line++) {
       for (int pixel = 0; pixel < camParams.nrOfPixelsPerLine; pixel++) {
+        
+        // Previous implementation
+        /*
         uint16_t rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel]);
         uint32_t red1 = ((rgb >> 11) & 0x1F) << 3;
         uint32_t green1 = ((rgb >> 5) & 0x3F) << 2;
         uint32_t blue1 = (rgb & 0x1F) << 3;
         uint32_t gray = ((red1*54+green1*183+blue1*19) >> 8)&0xFF;
         grayscale[line*camParams.nrOfPixelsPerLine+pixel] = gray;
+        */
+        
+        // New implementation
+        uint16_t rgb = swap_u16(rgb565[line*camParams.nrOfPixelsPerLine+pixel]);
+
+        asm volatile ("l.nios_rrr %[out1],%[in1],r0,0xD":[out1]"=r"(result):[in1]"r"(rgb));
+
+        grayscale[line*camParams.nrOfPixelsPerLine+pixel] = result;
+        
       }
     }
-    
-    asm volatile ("l.nios_rrr r0,r0,%[in2],0xC"::[in2]"r"(7<<4)); // disable
-    // in 1 val a in 2 val b
-
-    asm volatile ("l.nios_rrr %[out1],%[in1],%[in2],0xC":[out1]"=r"(cycles):[in1]"r"(0),[in2]"r"(1<<8)); // read counter 1
-    printf("Cycles: %d\n", cycles);
-
-
-
-    
+    asm volatile ("l.nios_rrr %[out1],r0,%[in2],0xC":[out1]"=r"(cycles):[in2]"r"(1<<8|7<<4));
+    asm volatile ("l.nios_rrr %[out1],%[in1],%[in2],0xC":[out1]"=r"(stall):[in1]"r"(1),[in2]"r"(1<<9));
+    asm volatile ("l.nios_rrr %[out1],%[in1],%[in2],0xC":[out1]"=r"(idle):[in1]"r"(2),[in2]"r"(1<<10));
+    printf("nrOfCycles: %d %d %d\n", cycles, stall, idle);
   }
-
-  
 }

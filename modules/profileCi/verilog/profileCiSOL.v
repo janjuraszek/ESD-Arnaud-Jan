@@ -15,7 +15,7 @@ module profileCi #( parameter[7:0] customId = 8'h00 )
   // wire [31:0] s_result;
   reg [31:0] s_result;
 
-  //assign result = s_result;
+  //assign result = s_result;// gate here instead
   assign done = s_isMyCi;
   
   reg s_enableCounter0, s_enableCounter1, s_enableCounter2, s_enableCounter3;
@@ -64,7 +64,7 @@ module profileCi #( parameter[7:0] customId = 8'h00 )
             .direction(1'b1),
             .counterValue(s_counterValue3));
 
-  assign result = (s_isMyCi) ? s_result : 32'd0;  // gate here instead
+  assign result = (s_isMyCi) ? s_result : 32'd0; 
   
   always @* begin
     //if (s_isMyCi == 1'b0) result <= 32'd0;
