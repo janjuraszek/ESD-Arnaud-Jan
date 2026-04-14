@@ -8,6 +8,7 @@ For the software, we modified the grayscale.c file.
 
 
 testestestest
+x2
 
 
 
