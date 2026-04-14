@@ -7,6 +7,9 @@ We also modified the or1420SingleCore.v module (systems>singleCore>verilog) to i
 For the software, we modified the grayscale.c file.
 
 
+testestestest
+
+
 
 
 
