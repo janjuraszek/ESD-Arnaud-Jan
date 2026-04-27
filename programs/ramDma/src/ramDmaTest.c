@@ -5,12 +5,12 @@
 
 // Write to CI memory: set bit9 for write, bits[8:0] = address
 #define CI_WRITE(addr, data) \
-    asm volatile ("l.nios_rrr r0,%[in1],%[in2],0x0" \
+    asm volatile ("l.nios_rrr r0,%[in1],%[in2],0x08" \
         :: [in1]"r"((1<<9) | (addr & 0x1FF)), [in2]"r"(data))
 
 // Read from CI memory: bit9=0, bits[8:0] = address
 #define CI_READ(addr, result) \
-    asm volatile ("l.nios_rrr %[out1],%[in1],r0,0x0" \
+    asm volatile ("l.nios_rrr %[out1],%[in1],r0,0x08" \
         : [out1]"=r"(result) : [in1]"r"(addr & 0x1FF))
 
 int main() {

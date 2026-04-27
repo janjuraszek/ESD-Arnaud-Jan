@@ -1,4 +1,4 @@
-module ramDmaCi #( parameter [7:0] customId = 8'h00 )
+module ramDmaCi #( parameter [7:0] customInstructionId = 8'h00 )
                 ( input wire        start,
                                    clock,
                                    reset,
@@ -9,7 +9,7 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
                   output wire [31:0] result );
 
     wire [31:0] memDataOut;
-    wire s_validCi     = (ciN == customId) && (start == 1'b1);
+    wire s_validCi     = (ciN == customInstructionId) && (start == 1'b1);
     wire s_validAccess = (valueA[31:10] == 22'b0);
     wire s_doOperation = s_validCi && s_validAccess;
 
@@ -67,17 +67,17 @@ module dualPortSSRAM #( parameter bitwidth = 32,
   reg [bitwidth-1:0] memoryContent [nrOfEntries-1:0];
 
   always @(posedge clockA)
-    begin
-      if (readAfterWrite != 0) dataOutA = memoryContent[addressA];
-      if (writeEnableA == 1'b1) memoryContent[addressA] = dataInA;
-      if (readAfterWrite == 0) dataOutA = memoryContent[addressA];
+    begin 
+      if (readAfterWrite != 0) dataOutA <= memoryContent[addressA];
+      if (writeEnableA == 1'b1) memoryContent[addressA] <= dataInA;
+      if (readAfterWrite == 0) dataOutA <= memoryContent[addressA];
     end
 
   always @(posedge clockB)
     begin
-      if (readAfterWrite != 0) dataOutB = memoryContent[addressB];
-      if (writeEnableB == 1'b1) memoryContent[addressB] = dataInB;
-      if (readAfterWrite == 0) dataOutB = memoryContent[addressB];
+      if (readAfterWrite != 0) dataOutB <= memoryContent[addressB];
+      if (writeEnableB == 1'b1) memoryContent[addressB] <= dataInB;
+      if (readAfterWrite == 0) dataOutB <= memoryContent[addressB];
     end
 
 endmodule         

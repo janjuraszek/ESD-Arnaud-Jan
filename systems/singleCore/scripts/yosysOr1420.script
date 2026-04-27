@@ -53,6 +53,7 @@ read -sv ../../../modules/support/verilog/sram2048x8Dp.v
 read -sv ../../../modules/profileCi/verilog/profileCi.v
 read -sv ../../../modules/profileCi/verilog/counter.v
 read -sv ../../../modules/grayscale/verilog/rgb565GrayscaleIse.v
+read -sv ../../../modules/ramDmaCi/verilog/ramDmaCi.v
 
 read -sv ../verilog/or1420SingleCore.v
 synth_ecp5 -top or1420SingleCore -json or1420SingleCore.json

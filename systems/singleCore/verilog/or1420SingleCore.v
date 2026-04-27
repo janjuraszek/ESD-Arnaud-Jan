@@ -319,8 +319,8 @@ module or1420SingleCore ( input wire         clock12MHz,
    * Here we instantiate the CPU
    *
    */
-  wire [31:0] s_cpu1CiResult, s_profileResult, s_rgbGrayResult;
-  wire [31:0] s_cpu1CiDataA, s_cpu1CiDataB, s_camCiResult, s_delayResult;
+  wire [31:0] s_cpu1CiResult, s_profileResult, s_rgbGrayResult, s_ramDmaCi_done;
+  wire [31:0] s_cpu1CiDataA, s_cpu1CiDataB, s_camCiResult, s_delayResult, s_ramDmaCi_result;
   wire [7:0]  s_cpu1CiN;
   wire        s_cpu1CiRa, s_cpu1CiRb, s_cpu1CiRc, s_cpu1CiStart, s_cpu1CiCke, s_cpu1CiDone, s_i2cCiDone, s_delayCiDone;
   wire [4:0]  s_cpu1CiA, s_cpu1CiB, s_cpu1CiC;
@@ -333,8 +333,8 @@ module or1420SingleCore ( input wire         clock12MHz,
   wire [7:0]  s_cpu1BurstSize;
   wire        s_spm1Irq, s_stall, s_profileDone, s_rgbGrayDone;
   
-  assign s_cpu1CiDone = s_hdmiDone | s_swapByteDone | s_flashDone | s_cpuFreqDone | s_i2cCiDone | s_delayCiDone | s_camCiDone | s_profileDone | s_rgbGrayDone;
-  assign s_cpu1CiResult = s_hdmiResult | s_swapByteResult | s_flashResult | s_cpuFreqResult | s_i2cCiResult | s_camCiResult | s_delayResult | s_profileResult | s_rgbGrayResult; 
+  assign s_cpu1CiDone = s_hdmiDone | s_swapByteDone | s_flashDone | s_cpuFreqDone | s_i2cCiDone | s_delayCiDone | s_camCiDone | s_profileDone | s_rgbGrayDone | s_ramDmaCi_done;
+  assign s_cpu1CiResult = s_hdmiResult | s_swapByteResult | s_flashResult | s_cpuFreqResult | s_i2cCiResult | s_camCiResult | s_delayResult | s_profileResult | s_rgbGrayResult | s_ramDmaCi_result; 
 
   or1420Top #( .NOP_INSTRUCTION(32'h1500FFFF)) cpu1
              (.cpuClock(s_systemClock),
@@ -470,7 +470,25 @@ module or1420SingleCore ( input wire         clock12MHz,
                       .iseId(s_cpu1CiN),
                       .done(s_rgbGrayDone),
                       .result(s_rgbGrayResult)
-                    );                   
+                    );  
+                    
+                    
+  /*
+   *
+   * Here we define a CI-attached memory
+   *
+   */                    
+    
+  ramDmaCi #(.customInstructionId(8'd8)) ramDma
+                    (.start(s_cpu1CiStart),
+                      .clock(s_systemClock),
+                      .reset(s_cpuReset),
+                      .valueA(s_cpu1CiDataA),
+                      .valueB(s_cpu1CiDataB),
+                      .ciN(s_cpu1CiN),
+                      .done(s_ramDmaCi_done),
+                      .result(s_ramDmaCi_result)
+                    ); 
 
   /*
    *
