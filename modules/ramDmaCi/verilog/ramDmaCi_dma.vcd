@@ -1,0 +1,437 @@
+$date
+	Mon Apr 27 17:05:46 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module ramDma_tb $end
+$scope module dut $end
+$var wire 32 ! addressDataIn [31:0] $end
+$var wire 1 " busErrorIn $end
+$var wire 1 # busGrant $end
+$var wire 1 $ busyIn $end
+$var wire 8 % ciN [7:0] $end
+$var wire 1 & clock $end
+$var wire 1 ' dataValidIn $end
+$var wire 1 ( done $end
+$var wire 1 ) endTransactionIn $end
+$var wire 1 * readNotWriteOut $end
+$var wire 1 + reset $end
+$var wire 32 , result [31:0] $end
+$var wire 1 - s_dmaWrite $end
+$var wire 1 . s_doOperation $end
+$var wire 1 / s_validCi $end
+$var wire 1 0 start $end
+$var wire 32 1 valueA [31:0] $end
+$var wire 32 2 valueB [31:0] $end
+$var wire 1 3 s_validAccess $end
+$var wire 8 4 s_thisBurst [7:0] $end
+$var wire 32 5 s_memDataOut [31:0] $end
+$var wire 1 6 s_ciWE $end
+$var wire 3 7 s_ciSel [2:0] $end
+$var wire 1 8 requestBus $end
+$var parameter 3 9 END_TRANS $end
+$var parameter 3 : ERROR $end
+$var parameter 3 ; IDLE $end
+$var parameter 3 < INIT $end
+$var parameter 3 = READ $end
+$var parameter 3 > REQUEST $end
+$var parameter 8 ? customInstructionId $end
+$var reg 32 @ addressDataOut [31:0] $end
+$var reg 1 A beginTransactionOut $end
+$var reg 8 B burstSizeOut [7:0] $end
+$var reg 4 C byteEnablesOut [3:0] $end
+$var reg 1 D endTransactionOut $end
+$var reg 32 E s_addressDataReg [31:0] $end
+$var reg 10 F s_blockSizeReg [9:0] $end
+$var reg 8 G s_burstCountReg [7:0] $end
+$var reg 8 H s_burstSizeReg [7:0] $end
+$var reg 32 I s_busAddrReg [31:0] $end
+$var reg 1 J s_busErrorReg $end
+$var reg 32 K s_currentBusAddrReg [31:0] $end
+$var reg 9 L s_currentMemAddrReg [8:0] $end
+$var reg 1 M s_dataValidReg $end
+$var reg 3 N s_dmaState [2:0] $end
+$var reg 3 O s_dmaStateNext [2:0] $end
+$var reg 1 P s_done $end
+$var reg 1 Q s_endTransactionReg $end
+$var reg 9 R s_memAddrReg [8:0] $end
+$var reg 32 S s_readMux [31:0] $end
+$var reg 1 T s_readPending $end
+$var reg 32 U s_result [31:0] $end
+$var reg 2 V s_statusReg [1:0] $end
+$var reg 10 W s_wordsLeftReg [9:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+b0 ?
+b1 >
+b11 =
+b10 <
+b0 ;
+b101 :
+b100 9
+$end
+#0
+$dumpvars
+bx W
+bx V
+bx U
+xT
+bx S
+bx R
+xQ
+xP
+b0 O
+bx N
+xM
+bx L
+bx K
+xJ
+bx I
+bx H
+bx G
+bx F
+bx E
+xD
+bx C
+bx B
+xA
+bx @
+x8
+b0 7
+06
+bx 5
+bx 4
+13
+b0 2
+b0 1
+00
+0/
+0.
+x-
+bx ,
+1+
+1*
+0)
+x(
+0'
+0&
+b0 %
+0$
+0#
+0"
+b0 !
+$end
+#5
+08
+0-
+b0 E
+0J
+0M
+0Q
+b0 V
+b0 G
+b0 W
+b0 L
+b0 K
+b0 N
+0T
+b0 ,
+b0 U
+0(
+0P
+0&
+#10
+0D
+b0 B
+b0 C
+b0 @
+0A
+0&
+#15
+0&
+#20
+0+
+0&
+#25
+1&
+#30
+1.
+1/
+b1 7
+16
+10
+b100000000000000000000 2
+b11000000000 1
+0&
+#35
+b100000000000000000000 S
+1(
+1P
+b100000000000000000000 I
+1&
+#40
+0.
+0/
+00
+0&
+#45
+0(
+0P
+1&
+#50
+1.
+1/
+b0xxxxxxxxx S
+b10 7
+10
+b0 2
+b101000000000 1
+0&
+#55
+b0 S
+1(
+1P
+b0 R
+1&
+#60
+0.
+0/
+00
+0&
+#65
+0(
+0P
+1&
+#70
+1.
+1/
+b0xxxxxxxxxx S
+b11 7
+10
+b100 2
+b111000000000 1
+0&
+#75
+b100 S
+1(
+1P
+b100 F
+1&
+#80
+0.
+0/
+00
+0&
+#85
+0(
+0P
+1&
+#90
+1.
+1/
+b0xxxxxxxx S
+b100 7
+10
+b11 2
+b1001000000000 1
+0&
+#95
+b11 S
+b11111111 4
+1(
+1P
+b11 H
+1&
+#100
+0.
+0/
+00
+0&
+#105
+0(
+0P
+1&
+#110
+1.
+1/
+b0 S
+b101 7
+10
+b1 2
+b1011000000000 1
+0&
+#115
+b1 S
+b1 O
+1(
+1P
+b1 V
+1&
+#120
+0.
+0/
+00
+0&
+#125
+b11 4
+18
+b100 W
+b100000000000000000000 K
+b1 N
+0(
+0P
+1&
+#130
+b10 O
+1#
+0&
+#135
+b11 O
+08
+b10 N
+1&
+#140
+0#
+0&
+#145
+b11 G
+b11 N
+b11 B
+b1111 C
+b100000000000000000000 @
+1A
+1&
+#150
+b10010000101010011010100100100 !
+1'
+0&
+#155
+1-
+b0 B
+b0 C
+b0 @
+0A
+b10010000101010011010100100100 E
+1M
+1&
+#160
+b11000000100010010101111010000001 !
+0&
+#165
+b10 4
+b10010000101010011010100100100 5
+b11000000100010010101111010000001 E
+b10 G
+b11 W
+b1 L
+b100000000000000000100 K
+1&
+#170
+b10000100100001001101011000001001 !
+0&
+#175
+b1 4
+b1 G
+b10 W
+b10 L
+b100000000000000001000 K
+b10000100100001001101011000001001 E
+1&
+#180
+b10110001111100000101011001100011 !
+0&
+#185
+b0 4
+b10110001111100000101011001100011 E
+b0 G
+b1 W
+b11 L
+b100000000000000001100 K
+1&
+#190
+0'
+0&
+#195
+b11111111 4
+0-
+b11111111 G
+b0 W
+b100 L
+b100000000000000010000 K
+0M
+1&
+#200
+1)
+0&
+#205
+b0 O
+1Q
+1&
+#210
+0)
+0&
+#215
+b0 S
+b0 V
+b0 N
+0Q
+1&
+#220
+1.
+1/
+06
+10
+b0 2
+b1010000000000 1
+0&
+#225
+1T
+1&
+#230
+0&
+#235
+0T
+1(
+1P
+1&
+#240
+0.
+0/
+00
+0&
+#245
+0(
+0P
+1&
+#250
+1.
+1/
+b10010000101010011010100100100 S
+b0 7
+10
+b0 1
+0&
+#255
+1T
+1&
+#260
+0&
+#265
+0T
+1(
+1P
+b10010000101010011010100100100 ,
+b10010000101010011010100100100 U
+1&
+#270
+0.
+0/
+00
+0&
