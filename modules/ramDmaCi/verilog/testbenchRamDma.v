@@ -32,35 +32,35 @@ module ramDma_tb;
     begin
       @(negedge reset);
 
-      // write 0xDEADBEEF to address 5
+      // write to address 5
       @(negedge clock);
-      valueA = 32'h00000205; // bit9=1, addr=5
-      valueB = 32'hDEADBEEF;
+      valueA = 32'h00000205; // bit9 = 1 write, address = 5
+      valueB = 32'hABABABAB;
       start  = 1'b1;
       @(posedge done);
       @(negedge clock);
       start = 1'b0;
 
-      // read back from address 5
+      // read from address 5
       @(negedge clock);
-      valueA = 32'h00000005; // bit9=0, addr=5
+      valueA = 32'h00000005; // bit9 = 0 read, address = 5
       valueB = 32'b0;
       start  = 1'b1;
       @(posedge done);
       @(negedge clock);
       start = 1'b0;
-      $display("Read result: %h (expected DEADBEEF)", result);
+      $display("Read result: %h (expected ABABABAB)", result);
 
-      // write 0xCAFEBABE to address 0
+      // write to address 0
       @(negedge clock);
-      valueA = 32'h00000200; // bit9=1, addr=0
-      valueB = 32'hCAFEBABE;
+      valueA = 32'h00000200;
+      valueB = 32'h12345678;
       start  = 1'b1;
       @(posedge done);
       @(negedge clock);
       start = 1'b0;
 
-      // read back from address 0
+      // read from address 0
       @(negedge clock);
       valueA = 32'h00000000;
       valueB = 32'b0;
@@ -68,7 +68,7 @@ module ramDma_tb;
       @(posedge done);
       @(negedge clock);
       start = 1'b0;
-      $display("Read result: %h (expected CAFEBABE)", result);
+      $display("Read result: %h (expected 12345678)", result);
 
       $finish;
     end
