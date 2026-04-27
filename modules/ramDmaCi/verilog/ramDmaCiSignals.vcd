@@ -1,0 +1,162 @@
+$date
+	Mon Apr 27 14:34:02 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1ps
+$end
+$scope module ramDma_tb $end
+$scope module dut $end
+$var wire 8 ! ciN [7:0] $end
+$var wire 1 " clock $end
+$var wire 1 # done $end
+$var wire 1 $ reset $end
+$var wire 32 % result [31:0] $end
+$var wire 1 & s_doOperation $end
+$var wire 1 ' s_validCi $end
+$var wire 1 ( start $end
+$var wire 32 ) valueA [31:0] $end
+$var wire 32 * valueB [31:0] $end
+$var wire 1 + s_validAccess $end
+$var wire 32 , memDataOut [31:0] $end
+$var parameter 8 - customId $end
+$var reg 1 . s_done $end
+$var reg 1 / s_readPending $end
+$var reg 32 0 s_result [31:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+b0 -
+$end
+#0
+$dumpvars
+bx 0
+x/
+x.
+bx ,
+1+
+b0 *
+b0 )
+0(
+0'
+0&
+bx %
+1$
+x#
+0"
+b0 !
+$end
+#5
+0/
+b0 %
+b0 0
+0#
+0.
+1"
+#10
+0"
+#15
+1"
+#20
+0$
+0"
+#25
+1"
+#30
+1&
+1'
+1(
+b11011110101011011011111011101111 *
+b1000000101 )
+0"
+#35
+1#
+1.
+b11011110101011011011111011101111 ,
+1"
+#40
+0&
+0'
+0(
+0"
+#45
+0#
+0.
+1"
+#50
+1&
+1'
+1(
+b0 *
+b101 )
+0"
+#55
+1/
+1"
+#60
+0"
+#65
+0/
+1#
+1.
+b11011110101011011011111011101111 %
+b11011110101011011011111011101111 0
+1"
+#70
+0&
+0'
+0(
+0"
+#75
+0#
+0.
+1"
+#80
+1&
+1'
+1(
+b11001010111111101011101010111110 *
+b1000000000 )
+0"
+#85
+1#
+1.
+b11001010111111101011101010111110 ,
+1"
+#90
+0&
+0'
+0(
+0"
+#95
+0#
+0.
+1"
+#100
+1&
+1'
+1(
+b0 *
+b0 )
+0"
+#105
+1/
+1"
+#110
+0"
+#115
+0/
+1#
+1.
+b11001010111111101011101010111110 %
+b11001010111111101011101010111110 0
+1"
+#120
+0&
+0'
+0(
+0"

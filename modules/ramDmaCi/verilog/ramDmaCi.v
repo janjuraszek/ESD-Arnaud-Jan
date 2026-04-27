@@ -21,6 +21,38 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
           .dataInA(valueB), .dataInB(32'b0),
           .dataOutA(memDataOut), .dataOutB());
 
+    reg s_done, s_readPending;
+    reg [31:0] s_result;
+
+    assign done   = s_done;
+    assign result = s_result;
+
+    always @(posedge clock)
+      begin
+        if (reset) begin
+          s_done        <= 1'b0;
+          s_result      <= 32'b0;
+          s_readPending <= 1'b0;
+        end else begin
+          s_done <= 1'b0;
+
+          if (s_doOperation && valueA[9]) begin
+            s_done <= 1'b1;                  // write: 1 cycle
+          end else if (s_doOperation && !valueA[9]) begin
+            s_readPending <= 1'b1;           // read: flag first cycle
+          end
+
+          if (s_readPending) begin
+            s_result      <= memDataOut;     // capture after 2nd cycle
+            s_done        <= 1'b1;
+            s_readPending <= 1'b0;
+          end
+        end
+      end
+
+
+          
+
 endmodule
 
 module dualPortSSRAM #( parameter bitwidth = 32,
