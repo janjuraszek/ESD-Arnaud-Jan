@@ -7,20 +7,17 @@ Arnaud Buchel 357744
 Jan Juraszek 341530
 
 For this assignment we:
-- added a rgb565GrayscaleIse verilog module that performs the conversion of a pixel to grayscale.
-- modified the grayscale.c file to use our custom instruction.
+- added a ramDmaCi verilog module 
+- write the ramDmaTest.c file to test our custom instruction.
 - modified the or1420SingleCore.v and the yosysOr1420.script file to include our new module.
 
-
-Screenshots of the results can be found in the ".reference images" folder.
-- Running the program with the unmodified grayscale.c file yields reasonable results (Execution cycles: ~29 million  Stall cycles: ~17.6 million  Bus idle cycles: ~16.7 million).
-- Running the program with our custom grayscale conversion instruction gives worse (slower) execution (Execution cycles: ~40.9 million  Stall cycles: 33.8 million  Bus idle cycles: 18.1 million). 
-- With our custom instruction, the image is converted successfully but all clock cycle numbers are higher. We were not able to determine the cause of this problem.
-
+What works and what doesn't:
+- Part 2.2 works fine, see first test of C program.
+- Part 2.3 almost works, it appears that there is a byte ordering issue at the end when retrieving written values, potentially due to endianness (can be fixed quickly).
+- Part 2.4 not completed
 
 
-
-
+########
 
 
 
