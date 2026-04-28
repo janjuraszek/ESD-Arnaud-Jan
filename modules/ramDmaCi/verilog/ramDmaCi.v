@@ -156,7 +156,10 @@ module ramDmaCi #( parameter [7:0] customInstructionId = 8'h00 )
   // Bus master output registers
   // -------------------------------------------------------
   assign requestBus    = (s_dmaState == REQUEST) ? 1'b1 : 1'b0;
-  assign readNotWriteOut = 1'b1; // always reading from bus
+  reg s_readNotWriteReg;
+  always @(posedge clock)
+    s_readNotWriteReg <= (s_dmaState == INIT) ? 1'b1 : 1'b0;
+  assign readNotWriteOut = s_readNotWriteReg;
 
   always @(posedge clock)
     begin

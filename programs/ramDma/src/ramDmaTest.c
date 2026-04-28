@@ -41,10 +41,7 @@
 int main() {
     volatile uint32_t status, val;
 
-    printf("=== CI Memory Test ===\n");
-
-   
-    
+    printf("=== CI Memory Test ===\n");    
     MEM_WRITE(0, 0xDEADBEEF);
     MEM_WRITE(1, 0xCAFEBABE);
     MEM_READ(0, val);

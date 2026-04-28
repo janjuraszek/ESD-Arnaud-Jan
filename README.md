@@ -1,7 +1,7 @@
-README_PW2_P2.md
+README.md
 
 ESD 2026
-PW2 - part 2
+PW4
 Group 30
 Arnaud Buchel 357744
 Jan Juraszek 341530
