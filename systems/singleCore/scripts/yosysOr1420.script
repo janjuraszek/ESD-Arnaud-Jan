@@ -52,7 +52,9 @@ read -sv ../../../modules/support/verilog/sram_1024x16_dp.v
 read -sv ../../../modules/support/verilog/sram2048x8Dp.v
 read -sv ../../../modules/profileCi/verilog/profileCi.v
 read -sv ../../../modules/profileCi/verilog/counter.v
-read -sv ../../../modules/grayscale/verilog/rgb565GrayscaleIse.v
+read -sv ../../../modules/grayscaleCi/verilog/rgb565Grayscale.v
+read -sv ../../../modules/grayscaleCi/verilog/rgb565ISE.v
+read -sv ../../../modules/ramDmaCi/verilog/dualPortSSram.v
 read -sv ../../../modules/ramDmaCi/verilog/ramDmaCi.v
 
 read -sv ../verilog/or1420SingleCore.v

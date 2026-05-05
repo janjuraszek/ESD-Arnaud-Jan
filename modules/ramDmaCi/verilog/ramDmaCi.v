@@ -1,256 +1,229 @@
-module ramDmaCi #( parameter [7:0] customInstructionId = 8'h00 )
-                ( input wire        start,
-									clock,
-									reset,
-                  input wire [31:0] valueA,
-									valueB,
-                  input wire [7:0]  ciN,
-                  output wire       done,
-                  output wire [31:0] result,
-                  output wire        requestBus,
-                  input wire         busGrant,
-                  output reg         beginTransactionOut,
-                  output reg  [31:0] addressDataOut,
-                  output reg         endTransactionOut,
-                  output reg  [3:0]  byteEnablesOut,
-                  output reg  [7:0]  burstSizeOut,
-                  output wire        readNotWriteOut,
-                  input wire         busyIn,
-                                     busErrorIn,
-                                     endTransactionIn,
-                                     dataValidIn,
-                  input wire [31:0]  addressDataIn );
+module ramDmaCi #( parameter [7:0] customId = 8'h00 )
+                 ( input wire         start,
+                                      clock,
+                                      reset,
+                   input wire [31:0]  valueA,
+                                      valueB,
+                   input wire [7:0]   ciN,
+                   output wire        done ,
+                   output wire [31:0] result,
 
-  
-  // states for the FSM
-  localparam [2:0] IDLE      = 3'd0,
-                   REQUEST   = 3'd1,
-                   INIT      = 3'd2,
-                   READ      = 3'd3,
-                   END_TRANS = 3'd4,
-                   ERROR     = 3'd5;
+                   // Here the required bus signals are defined
+                   output wire        requestTransaction,
+                   input wire         transactionGranted,
+                   input wire         endTransactionIn,
+                                      dataValidIn,
+                                      busErrorIn,
+                                      busyIn,
+                   input wire [31:0]  addressDataIn,
+                   output reg         beginTransactionOut,
+                                      readNotWriteOut,
+                                      endTransactionOut,
+                   output wire        dataValidOut,
+                   output reg [3:0]   byteEnablesOut,
+                   output reg [7:0]   burstSizeOut,
+                   output wire [31:0] addressDataOut);
 
+  wire [31:0] s_sramDataValue;
+  /*
+   *
+   * Here we define the custom instruction control signals
+   *
+   */
+  wire s_isMyCi = (ciN == customId) ? start : 1'b0;
+  wire s_isSramWrite = (valueA[31:10] == 22'd0) ? s_isMyCi & valueA[9] : 1'b0;
+  wire s_isSramRead  = s_isMyCi & ~valueA[9];
+  reg s_isSramReadReg;
   
+  assign done   = (s_isMyCi & valueA[9]) | s_isSramReadReg;
   
-  
-  wire s_validCi     = (ciN == customInstructionId) && (start == 1'b1);
-  wire s_doOperation = s_validCi;
-  wire [2:0] s_ciSel = valueA[12:10];
-  wire       s_ciWE  = valueA[9];
+  always @(posedge clock) s_isSramReadReg = ~reset & s_isSramRead;
 
+  /*
+   *
+   * Here we define the sdram control registers
+   *
+   */
+  reg[31:0] s_busStartAddressReg;
+  reg[8:0]  s_memoryStartAddressReg;
+  reg[9:0]  s_blockSizeReg;
+  reg[7:0]  s_usedBurstSizeReg;
   
-  //DMA configuration registers
-  reg [31:0] s_busAddrReg;
-  reg [8:0]  s_memAddrReg;
-  reg [9:0]  s_blockSizeReg;
-  reg [7:0]  s_burstSizeReg;
-  reg [1:0]  s_statusReg;
-  reg [2:0]  s_dmaState;
-
-  
-  // all signals on the bus out port go are registered
-  reg        s_endTransactionReg, s_dataValidReg, s_busErrorReg;
-  reg [31:0] s_addressDataReg;
-
   always @(posedge clock)
     begin
-      s_endTransactionReg <= endTransactionIn & ~reset;
-      s_dataValidReg      <= dataValidIn      & ~reset;
-      s_busErrorReg       <= busErrorIn       & ~reset;
-      s_addressDataReg    <= addressDataIn;
+      s_busStartAddressReg    <= (reset == 1'b1) ? 32'd0 :
+                                 (s_isMyCi == 1'b1 && valueA[12:9] == 4'b0011) ? valueB : s_busStartAddressReg;
+      s_memoryStartAddressReg <= (reset == 1'b1) ? 9'd0 :
+                                 (s_isMyCi == 1'b1 && valueA[12:9] == 4'b0101) ? valueB[8:0] : s_memoryStartAddressReg;
+      s_blockSizeReg          <= (reset == 1'b1) ? 10'd0 :
+                                 (s_isMyCi == 1'b1 && valueA[12:9] == 4'b0111) ? valueB[9:0] : s_blockSizeReg;
+      s_usedBurstSizeReg      <= (reset == 1'b1) ? 8'd0 :
+                                 (s_isMyCi == 1'b1 && valueA[12:9] == 4'b1001) ? valueB[7:0] : s_usedBurstSizeReg;
     end
-    
 
+  /*
+   *
+   * Here we define all bus-in registers
+   *
+   */
+  reg s_endTransactionInReg, s_dataValidInReg;
+  reg [31:0] s_addressDataInReg;
   
-  // counters for the DMA
-  reg [31:0] s_currentBusAddrReg;
-  reg [8:0]  s_currentMemAddrReg;
-  reg [9:0]  s_wordsLeftReg;
-  reg [7:0]  s_burstCountReg;
+  always @(posedge clock)
+    begin
+      s_endTransactionInReg <= endTransactionIn;
+      s_dataValidInReg      <= dataValidIn;
+      s_addressDataInReg    <= addressDataIn;
+    end
 
-  // current burst size
-  wire [7:0] s_thisBurst = (s_wordsLeftReg <= {2'b0, s_burstSizeReg} + 10'd1) ?
-                            s_wordsLeftReg[7:0] - 8'd1 : s_burstSizeReg;
-
+  /*
+   *
+   * Here we map the dual-ported memory
+   *
+   */
   
+  reg [8:0] s_ramCiAddressReg;
+  wire s_ramCiWriteEnable;
+  wire [31:0] s_busRamData;
   
-  // FSM logic (choose next state)
-  reg [2:0] s_dmaStateNext;
+  dualPortSSRAM #( .bitwidth(32),
+                   .nrOfEntries(512)) memory
+                 ( .clockA(clock), 
+                   .clockB(~clock),
+                   .writeEnableA(s_isSramWrite), 
+                   .writeEnableB(s_ramCiWriteEnable),
+                   .addressA(valueA[8:0]), 
+                   .addressB(s_ramCiAddressReg),
+                   .dataInA(valueB), 
+                   .dataInB(s_addressDataInReg),
+                   .dataOutA(s_sramDataValue), 
+                   .dataOutB(s_busRamData));
+  
 
+  /*
+   *
+   * Here we define the dma-state-machine
+   *
+   */
+  localparam [3:0] IDLE = 4'd0;
+  localparam [3:0] INIT = 4'd1;
+  localparam [3:0] REQUEST_BUS = 4'd2;
+  localparam [3:0] SET_UP_TRANSACTION = 4'd3;
+  localparam [3:0] DO_READ = 4'd4;
+  localparam [3:0] WAIT_END = 4'd5;
+  localparam [3:0] DO_WRITE = 4'd6;
+  localparam [3:0] END_TRANSACTION_ERROR = 4'd7;
+  localparam [3:0] END_WRITE_TRANSACTION = 4'd8;
+  
+  reg [3:0] s_dmaCurrentStateReg, s_dmaNextState;
+  reg       s_busErrorReg;
+  reg       s_isReadBurstReg;
+  reg[8:0]  s_wordsWrittenReg;
+  
+  // a dma action is requested by the ci:
+  wire s_requestDmaIn = (valueA[12:9] == 4'b1011) ? s_isMyCi & valueB[0] & ~valueB[1] : 1'b0;
+  wire s_requestDmaOut = (valueA[12:9] == 4'b1011) ? s_isMyCi & ~valueB[0] & valueB[1] : 1'b0;
+  wire s_dmaIsBusy = (s_dmaCurrentStateReg == IDLE) ? 1'b0 : 1'b1;
+  wire s_dmaDone;
+  
+  // here we define the next state
   always @*
-    case (s_dmaState)
-      IDLE      : s_dmaStateNext = (s_statusReg[0] == 1'b1) ? REQUEST : IDLE;
-      REQUEST   : s_dmaStateNext = (busGrant == 1'b1) ? INIT : REQUEST;
-      INIT      : s_dmaStateNext = READ;
-      READ      : s_dmaStateNext = (s_busErrorReg == 1'b1) ? ERROR :
-                                   (s_endTransactionReg == 1'b1 && s_wordsLeftReg == 10'd0) ? IDLE :
-                                   (s_endTransactionReg == 1'b1) ? REQUEST :
-                                   READ;
-      ERROR     : s_dmaStateNext = (s_endTransactionReg == 1'b1) ? IDLE : ERROR;
-      default   : s_dmaStateNext = IDLE;
+    case (s_dmaCurrentStateReg)
+      IDLE                  : s_dmaNextState <= (s_requestDmaIn == 1'b1 || s_requestDmaOut == 1'b1) ? INIT : IDLE;
+      INIT                  : s_dmaNextState <= REQUEST_BUS;
+      REQUEST_BUS           : s_dmaNextState <= (transactionGranted == 1'b1) ? SET_UP_TRANSACTION : REQUEST_BUS;
+      SET_UP_TRANSACTION    : s_dmaNextState <= (s_isReadBurstReg == 1'b1) ? DO_READ : DO_WRITE;
+      DO_READ               : s_dmaNextState <= (busErrorIn == 1'b1) ? WAIT_END:
+                                                (s_endTransactionInReg == 1'b1 && s_dmaDone == 1'b1) ? IDLE :
+                                                (s_endTransactionInReg == 1'b1) ? REQUEST_BUS : DO_READ;
+      WAIT_END              : s_dmaNextState <= (s_endTransactionInReg == 1'b1) ? IDLE : WAIT_END;
+      DO_WRITE              : s_dmaNextState <= (busErrorIn == 1'b1) ? END_TRANSACTION_ERROR :
+                                                (s_wordsWrittenReg[8] == 1'b1 && busyIn == 1'b0) ? END_WRITE_TRANSACTION : DO_WRITE;
+      END_WRITE_TRANSACTION : s_dmaNextState <= (s_dmaDone == 1'b1) ? IDLE : REQUEST_BUS;
+      default               : s_dmaNextState <= IDLE;
     endcase
-
-
-
-  // management of counters and registers
+  
   always @(posedge clock)
     begin
-      if (reset) begin
-        s_dmaState          <= IDLE;
-        s_currentBusAddrReg <= 32'd0;
-        s_currentMemAddrReg <= 9'd0;
-        s_wordsLeftReg      <= 10'd0;
-        s_burstCountReg     <= 8'd0;
-        s_statusReg         <= 2'd0;
-      end else begin
-        s_dmaState <= s_dmaStateNext;
-
-        // DMA starting
-        if (s_dmaState == IDLE && s_dmaStateNext == REQUEST) begin
-          s_currentBusAddrReg <= s_busAddrReg;
-          s_currentMemAddrReg <= s_memAddrReg;
-          s_wordsLeftReg      <= s_blockSizeReg;
-          s_statusReg[1]      <= 1'b0;
-        end
-
-
-        if (s_dmaState == INIT)
-          s_burstCountReg <= s_thisBurst;
-
-        if (s_dmaState == READ && s_dataValidReg == 1'b1) begin
-          s_currentBusAddrReg <= s_currentBusAddrReg + 32'd4;
-          s_currentMemAddrReg <= s_currentMemAddrReg + 9'd1;
-          s_wordsLeftReg      <= s_wordsLeftReg - 10'd1;
-          s_burstCountReg     <= s_burstCountReg - 8'd1;
-        end
-
-
-        if (s_dmaState == READ && s_busErrorReg == 1'b1)
-          s_statusReg[1] <= 1'b1;
-
-
-        s_statusReg[0] <= (s_dmaStateNext != IDLE) ? 1'b1 : 1'b0;
-
-        // configuration of DMA registers through CI
-        if (s_doOperation && s_ciWE) begin
-          case (s_ciSel)
-            3'b001: s_busAddrReg   <= valueB;
-            3'b010: s_memAddrReg   <= valueB[8:0];
-            3'b011: s_blockSizeReg <= valueB[9:0];
-            3'b100: s_burstSizeReg <= valueB[7:0];
-            3'b101: if (valueB[0] == 1'b1 && s_statusReg[0] == 1'b0)
-                      s_statusReg[0] <= 1'b1;
-            default: ;
-          endcase
-        end
-      end
+      s_dmaCurrentStateReg <= (reset == 1'b1) ? IDLE : s_dmaNextState;
+      s_busErrorReg        <= (reset == 1'b1 || s_dmaCurrentStateReg == INIT) ? 1'b0 :
+                              (s_dmaCurrentStateReg == WAIT_END || s_dmaCurrentStateReg == END_TRANSACTION_ERROR) ? 1'b1 : s_busErrorReg;
+      s_isReadBurstReg     <= (s_dmaCurrentStateReg == IDLE) ? s_requestDmaIn : s_isReadBurstReg;
     end
 
-  
-  
-  
-  assign requestBus    = (s_dmaState == REQUEST) ? 1'b1 : 1'b0;
-  reg s_readNotWriteReg;
-  always @(posedge clock)
-    s_readNotWriteReg <= (s_dmaState == INIT) ? 1'b1 : 1'b0;
-  assign readNotWriteOut = s_readNotWriteReg;
+  /*
+   *
+   * Here we define the shadow registers used by the dma-controller
+   *
+   */
+  reg[31:0] s_busStartAddressShadowReg;
+  reg[9:0]  s_blockSizeShadowReg;
+  wire s_doBusWrite = (s_dmaCurrentStateReg == DO_WRITE) ? ~busyIn & ~s_wordsWrittenReg[8] : 1'b0;
 
+  
+  /* the second condition is the special case where the end of transaction collides with the last data valid in */
+  assign s_dmaDone = (s_blockSizeShadowReg == 10'd0 ||
+                      (s_blockSizeShadowReg == 10'd1 && s_endTransactionInReg == 1'b1 && s_dataValidInReg == 1'b1)) ? 1'b1 : 1'b0;
+  assign s_ramCiWriteEnable = (s_dmaCurrentStateReg == DO_READ) ? s_dataValidInReg : 1'b0;
+  
   always @(posedge clock)
     begin
-      beginTransactionOut <= (s_dmaState == INIT) ? 1'b1 : 1'b0;
-      addressDataOut      <= (s_dmaState == INIT) ? s_currentBusAddrReg : 32'd0;
-      byteEnablesOut      <= (s_dmaState == INIT) ? 4'hF : 4'd0;
-      burstSizeOut        <= (s_dmaState == INIT) ? s_thisBurst : 8'd0;
-      endTransactionOut   <= (s_dmaState == ERROR && s_busErrorReg) ? 1'b1 : 1'b0;
+      s_busStartAddressShadowReg <= (s_dmaCurrentStateReg == INIT) ? s_busStartAddressReg :
+                                    (s_ramCiWriteEnable == 1'b1 || s_doBusWrite == 1'b1) ? s_busStartAddressShadowReg + 32'd4 : s_busStartAddressShadowReg;
+      s_blockSizeShadowReg       <= (s_dmaCurrentStateReg == INIT) ? s_blockSizeReg :
+                                    (s_ramCiWriteEnable == 1'b1 || s_doBusWrite == 1'b1) ? s_blockSizeShadowReg - 10'd1 : s_blockSizeShadowReg;
+      s_ramCiAddressReg          <= (s_dmaCurrentStateReg == INIT) ? s_memoryStartAddressReg :
+                                    (s_ramCiWriteEnable == 1'b1 || s_doBusWrite == 1'b1) ? s_ramCiAddressReg + 9'd1 : s_ramCiAddressReg;
+    end
+  
+  /*
+   *
+   * Here we define the bus-out signals
+   *
+   */
+  reg        s_dataOutValidReg;
+  reg [31:0] s_addressDataOutReg;
+  wire [9:0] s_maxBurstSize = {2'd0,s_usedBurstSizeReg} + 10'd1;
+  wire [9:0] s_restingBlockSize = s_blockSizeShadowReg - 10'd1;
+  wire [7:0] s_usedBurstSize = (s_blockSizeShadowReg > s_maxBurstSize) ? s_usedBurstSizeReg : s_restingBlockSize[7:0];
+  
+  assign requestTransaction = (s_dmaCurrentStateReg == REQUEST_BUS) ? 1'd1 : 1'd0;
+  assign dataValidOut = s_dataOutValidReg;
+  assign addressDataOut = s_addressDataOutReg;
+  
+  always @(posedge clock)
+    begin
+      beginTransactionOut <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? 1'b1 : 1'b0;
+      readNotWriteOut     <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? s_isReadBurstReg : 1'b0;
+      byteEnablesOut      <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? 4'hF : 4'd0;
+      burstSizeOut        <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? s_usedBurstSize : 8'd0;
+      s_addressDataOutReg <= (s_dmaCurrentStateReg == DO_WRITE && busyIn == 1'b1) ? s_addressDataOutReg :
+                             (s_doBusWrite == 1'b1) ? s_busRamData : 
+                             (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? {s_busStartAddressShadowReg[31:2],2'd0} : 32'd0;
+      s_wordsWrittenReg   <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? {1'b0,s_usedBurstSize} : 
+                             (s_doBusWrite == 1'b1) ? s_wordsWrittenReg - 9'd1 : s_wordsWrittenReg;
+      endTransactionOut   <= (s_dmaCurrentStateReg == END_TRANSACTION_ERROR || s_dmaCurrentStateReg == END_WRITE_TRANSACTION) ? 1'b1 : 1'b0;
+      s_dataOutValidReg   <= (busyIn == 1'b1 && s_dmaCurrentStateReg == DO_WRITE) ? s_dataOutValidReg : s_doBusWrite;
     end
 
+  /*
+   *
+   * Here we define the result value
+   *
+   */
+  reg[31:0] s_result;
   
-  wire s_dmaWrite = (s_dmaState == READ) && s_dataValidReg;
-
-  
-  
-  // for the SSRAM
-  wire [31:0] s_memDataOut;
-  // instantiation
-  dualPortSSRAM #( .bitwidth(32), .nrOfEntries(512), .readAfterWrite(0) )
-  mem ( .clockA(clock),         .clockB(~clock),
-        .writeEnableA(s_doOperation && s_ciWE && s_ciSel == 3'b000),
-        .writeEnableB(s_dmaWrite),
-        .addressA(valueA[8:0]), .addressB(s_currentMemAddrReg),
-        .dataInA(valueB),       .dataInB(s_addressDataReg),
-        .dataOutA(s_memDataOut),.dataOutB());
-
-  
-  
-  
-  reg s_done, s_readPending;
-  reg [31:0] s_result;
-  reg [31:0] s_readMux;
-
-  wire s_doneWrite = s_doOperation && s_ciWE;
-
-  assign done   = s_doneWrite | s_done;
-  assign result = s_result;
-
-  // when the CI wants to read values
   always @*
-    case (s_ciSel)
-      3'b000: s_readMux = s_memDataOut;
-      3'b001: s_readMux = s_busAddrReg;
-      3'b010: s_readMux = {23'd0, s_memAddrReg};
-      3'b011: s_readMux = {22'd0, s_blockSizeReg};
-      3'b100: s_readMux = {24'd0, s_burstSizeReg};
-      3'b101: s_readMux = {30'd0, s_statusReg};
-      default: s_readMux = 32'd0;
+    case (valueA[12:10])
+      3'b000    : s_result <= s_sramDataValue;
+      3'b001    : s_result <= s_busStartAddressReg;
+      3'b010    : s_result <= {23'd0,s_memoryStartAddressReg};
+      3'b011    : s_result <= {22'd0,s_blockSizeReg};
+      3'b100    : s_result <= {24'd0,s_usedBurstSizeReg};
+      3'b101    : s_result <= {30'd0,s_busErrorReg,s_dmaIsBusy};
+      default   : s_result <= 32'd0;
     endcase
+  
+  assign result = (s_isSramReadReg == 1'b1) ? s_result : 32'd0;
 
-
-
-  always @(posedge clock)
-    begin
-      if (reset) begin
-        s_done        <= 1'b0;
-        s_result      <= 32'd0;
-        s_readPending <= 1'b0;
-      end else begin
-        s_done <= 1'b0;
-
-        if (s_readPending) begin
-          s_result      <= s_readMux;
-          s_done        <= 1'b1;
-          s_readPending <= 1'b0;
-        end else if (s_doOperation && !s_ciWE) begin
-          s_readPending <= 1'b1;
-        end
-      end
-    end
 endmodule
-
-
-// definition of SSRAM module
-module dualPortSSRAM #( parameter bitwidth = 32,
-                        parameter nrOfEntries = 512,
-                        parameter readAfterWrite = 0 )
-                      ( input wire                          clockA, clockB,
-                                                            writeEnableA, writeEnableB,
-                        input wire [$clog2(nrOfEntries)-1:0] addressA, addressB,
-                        input wire [bitwidth-1:0]            dataInA, dataInB,
-                        output reg [bitwidth-1:0]            dataOutA, dataOutB );
-
-  reg [bitwidth-1:0] memoryContent [nrOfEntries-1:0];
-
-  always @(posedge clockA)
-    begin 
-      if (readAfterWrite != 0) dataOutA <= memoryContent[addressA];
-      if (writeEnableA == 1'b1) memoryContent[addressA] <= dataInA;
-      if (readAfterWrite == 0) dataOutA <= memoryContent[addressA];
-    end
-
-  always @(posedge clockB)
-    begin
-      if (readAfterWrite != 0) dataOutB <= memoryContent[addressB];
-      if (writeEnableB == 1'b1) memoryContent[addressB] <= dataInB;
-      if (readAfterWrite == 0) dataOutB <= memoryContent[addressB];
-    end
-
-endmodule         
