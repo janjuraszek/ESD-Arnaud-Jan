@@ -193,17 +193,25 @@ module ramDmaCi #( parameter [7:0] customId = 8'h00 )
   
   always @(posedge clock)
     begin
-      beginTransactionOut <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? 1'b1 : 1'b0;
-      readNotWriteOut     <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? s_isReadBurstReg : 1'b0;
-      byteEnablesOut      <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? 4'hF : 4'd0;
-      burstSizeOut        <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? s_usedBurstSize : 8'd0;
-      s_addressDataOutReg <= (s_dmaCurrentStateReg == DO_WRITE && busyIn == 1'b1) ? s_addressDataOutReg :
-                             (s_doBusWrite == 1'b1) ? s_busRamData : 
+      beginTransactionOut <= (reset == 1'b1) ? 1'b0 :
+                             (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? 1'b1 : 1'b0;
+      readNotWriteOut     <= (reset == 1'b1) ? 1'b0 :
+                             (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? s_isReadBurstReg : 1'b0;
+      byteEnablesOut      <= (reset == 1'b1) ? 4'd0 :
+                             (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? 4'hF : 4'd0;
+      burstSizeOut        <= (reset == 1'b1) ? 8'd0 :
+                             (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? s_usedBurstSize : 8'd0;
+      s_addressDataOutReg <= (reset == 1'b1) ? 32'd0 :
+                             (s_dmaCurrentStateReg == DO_WRITE && busyIn == 1'b1) ? s_addressDataOutReg :
+                             (s_doBusWrite == 1'b1) ? s_busRamData :
                              (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? {s_busStartAddressShadowReg[31:2],2'd0} : 32'd0;
-      s_wordsWrittenReg   <= (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? {1'b0,s_usedBurstSize} : 
+      s_wordsWrittenReg   <= (reset == 1'b1) ? 9'd0 :
+                             (s_dmaCurrentStateReg == SET_UP_TRANSACTION) ? {1'b0,s_usedBurstSize} : 
                              (s_doBusWrite == 1'b1) ? s_wordsWrittenReg - 9'd1 : s_wordsWrittenReg;
-      endTransactionOut   <= (s_dmaCurrentStateReg == END_TRANSACTION_ERROR || s_dmaCurrentStateReg == END_WRITE_TRANSACTION) ? 1'b1 : 1'b0;
-      s_dataOutValidReg   <= (busyIn == 1'b1 && s_dmaCurrentStateReg == DO_WRITE) ? s_dataOutValidReg : s_doBusWrite;
+      endTransactionOut   <= (reset == 1'b1) ? 1'b0 :
+                             (s_dmaCurrentStateReg == END_TRANSACTION_ERROR || s_dmaCurrentStateReg == END_WRITE_TRANSACTION) ? 1'b1 : 1'b0;
+      s_dataOutValidReg   <= (reset == 1'b1) ? 1'b0 :
+                             (busyIn == 1'b1 && s_dmaCurrentStateReg == DO_WRITE) ? s_dataOutValidReg : s_doBusWrite;
     end
 
   /*
