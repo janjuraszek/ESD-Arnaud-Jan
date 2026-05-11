@@ -169,6 +169,23 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   wire [31:0] s_pixelWord = {s_byte1Reg,camData,s_byte3Reg,s_byte2Reg};
   wire s_weLineBuffer = (s_pixelCountReg[1:0] == 2'b11) ? hsync : 1'b0;
   
+  
+  
+  //wire [31:0] s_grayscalePixelWord;
+  wire [7:0] gray_pixel_1;
+  wire [7:0] gray_pixel_2;
+  
+  
+  
+  rgb565Grayscale pixel1 ( .rgb565(s_pixelWord[15:0]),
+                           .grayscale(gray_pixel_1));
+  rgb565Grayscale pixel2 ( .rgb565(s_pixelWord[31:16]),
+                           .grayscale(gray_pixel_2));
+                           
+  wire [31:0] s_grayscalePixelWord = {gray_pixel_2[7:3],gray_pixel_2[7:2],gray_pixel_2[7:3],gray_pixel_1[7:3],gray_pixel_1[7:2],gray_pixel_1[7:3]};
+  
+  
+  
   always @(posedge pclk)
     begin
       s_byte3Reg <= (s_pixelCountReg[1:0] == 2'b00 && hsync == 1'b1) ? camData : s_byte3Reg;
@@ -181,7 +198,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
                              .clock1(pclk),
                              .clock2(clock),
                              .writeEnable(s_weLineBuffer),
-                             .dataIn1(s_pixelWord),
+                             .dataIn1(s_grayscalePixelWord),
                              .dataOut2(s_busPixelWord));
 
   /*
