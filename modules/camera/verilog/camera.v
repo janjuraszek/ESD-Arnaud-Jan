@@ -167,13 +167,13 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   reg [8:0] s_busSelectReg;
   wire [31:0] s_busPixelWord;
   wire [31:0] s_pixelWord = {s_byte1Reg,camData,s_byte3Reg,s_byte2Reg};
-  wire s_weLineBuffer = (s_pixelCountReg[1:0] == 2'b11) ? hsync : 1'b0;
+  wire s_weLineBuffer = (s_pixelCountReg[2:0] == 3'b111) ? hsync : 1'b0;
   
   
   
-  //wire [31:0] s_grayscalePixelWord;
-  wire [7:0] gray_pixel_1;
-  wire [7:0] gray_pixel_2;
+  wire [7:0] gray_pixel_1, gray_pixel_2;
+  
+  reg [7:0] gray_pixel_1_prev, gray_pixel_2_prev;
   
   
   
@@ -181,8 +181,18 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
                            .grayscale(gray_pixel_1));
   rgb565Grayscale pixel2 ( .rgb565(s_pixelWord[31:16]),
                            .grayscale(gray_pixel_2));
-                           
-  wire [31:0] s_grayscalePixelWord = {gray_pixel_2[7:3],gray_pixel_2[7:2],gray_pixel_2[7:3],gray_pixel_1[7:3],gray_pixel_1[7:2],gray_pixel_1[7:3]};
+ 
+ 
+  always @(posedge pclk)
+	  begin
+	    if (s_pixelCountReg[2:0] == 3'b011 && hsync == 1'b1)
+	      begin
+		gray_pixel_1_prev <= gray_pixel_1;
+		gray_pixel_2_prev <= gray_pixel_2;
+	      end
+	  end
+  
+  wire [31:0] s_grayscalePixelWord = {gray_pixel_1_prev, gray_pixel_2_prev, gray_pixel_1, gray_pixel_2};
   
   
   
@@ -193,7 +203,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
       s_byte1Reg <= (s_pixelCountReg[1:0] == 2'b10 && hsync == 1'b1) ? camData : s_byte1Reg;
     end
   
-  dualPortRam2k lineBuffer ( .address1(s_pixelCountReg[10:2]),
+  dualPortRam2k lineBuffer ( .address1(s_pixelCountReg[10:3]),
                              .address2(s_busSelectReg),
                              .clock1(pclk),
                              .clock2(clock),
@@ -252,7 +262,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
       s_burstCountReg        <= (s_stateMachineReg == INIT_BURST1) ? s_burstSizeNext - 8'd1 :
                                 (s_doWrite == 1'b1) ? s_burstCountReg - 9'd1 : s_burstCountReg;
       s_busSelectReg         <= (s_stateMachineReg == IDLE) ? 9'd0 : (s_doWrite == 1'b1) ? s_busSelectReg + 9'd1 : s_busSelectReg;
-      s_nrOfPixelsPerLineReg <= (s_newLine == 1'b1) ? s_pixelCountValueReg[10:2] : 
+      s_nrOfPixelsPerLineReg <= (s_newLine == 1'b1) ? s_pixelCountValueReg[10:3] : 
                                 (s_stateMachineReg == INIT_BURST1) ? s_nrOfPixelsPerLineReg - {1'b0,s_burstSizeNext} : s_nrOfPixelsPerLineReg;
     end
   
