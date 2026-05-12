@@ -177,10 +177,10 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
   
   
   
-  rgb565Grayscale pixel1 ( .rgb565(s_pixelWord[15:0]),
-                           .grayscale(gray_pixel_1));
-  rgb565Grayscale pixel2 ( .rgb565(s_pixelWord[31:16]),
+  rgb565Grayscale pixel2 ( .rgb565(s_pixelWord[15:0]),
                            .grayscale(gray_pixel_2));
+  rgb565Grayscale pixel1 ( .rgb565(s_pixelWord[31:16]),
+                           .grayscale(gray_pixel_1));
  
  
   always @(posedge pclk)
