@@ -56,6 +56,7 @@ read -sv ../../../modules/grayscaleCi/verilog/rgb565Grayscale.v
 read -sv ../../../modules/grayscaleCi/verilog/rgb565ISE.v
 read -sv ../../../modules/ramDmaCi/verilog/dualPortSSram.v
 read -sv ../../../modules/ramDmaCi/verilog/ramDmaCi.v
+read -sv ../../../modules/sobel/verilog/sobelCI.v
 
 read -sv ../verilog/or1420SingleCore.v
 synth_ecp5 -top or1420SingleCore -json or1420SingleCore.json
