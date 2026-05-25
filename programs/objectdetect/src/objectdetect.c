@@ -215,7 +215,7 @@ int main(void)
            camParams.nrOfPixelsPerLine,
            camParams.nrOfLinesPerImage,
            camParams.framesPerSecond);
-
+           
     result = (camParams.nrOfPixelsPerLine <= 320)
              ? camParams.nrOfPixelsPerLine | 0x80000000 : camParams.nrOfPixelsPerLine;
     vga[0] = swap_u32(result);
