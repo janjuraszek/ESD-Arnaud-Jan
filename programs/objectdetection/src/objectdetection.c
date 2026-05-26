@@ -72,6 +72,11 @@ volatile uint8_t  grayscale[640 * 480];
 volatile uint8_t  sobelOut[640 * 480];
 uint8_t           visited[640 * 480];
 
+/* ================ Edge list (produced during Sobel drain) ================ */
+#define MAX_EDGES 65536
+static uint32_t edge_list[MAX_EDGES];   /* packed: (y << 16) | x */
+static uint32_t n_edges;
+
 /* ================ Detection params ================ */
 #define MAX_STACK              8000
 #define MAX_BLOB_PIXELS        8000
@@ -174,12 +179,21 @@ static void classify_blob(int n, int blob_id) {
         return;
     }
 
+    /* Size-adaptive threshold: smaller shapes have higher baseline ratios
+     * due to pixelization noise + Sobel response thickness + dilation,
+     * all of which are absolute (fixed pixels) but relative to small shapes
+     * appear large. Threshold = base + offset/radius.
+     * Calibrate base and offset empirically.
+     */
+    uint32_t r_est = (uint32_t)(bbox_w + bbox_h) / 4U;   /* rough radius */
+    uint32_t threshold = 80U + 2000U / (r_est > 0 ? r_est : 1U);
+
     printf("blob %d\n", blob_id);
     printf("  n=%d\n", n);
     printf("  bbox x=%d..%d  y=%d..%d\n", xmin, xmax, ymin, ymax);
-    printf("  mu=%u sigma=%u ratio=%u\n", mu, sigma, ratio_milli);
-    if (ratio_milli < CIRCLE_THRESHOLD_MILLI) printf("  -> CIRCLE\n");
-    else                                      printf("  -> SQUARE\n");
+    printf("  mu=%u sigma=%u ratio=%u thr=%u\n", mu, sigma, ratio_milli, threshold);
+    if (ratio_milli < threshold) printf("  -> CIRCLE\n");
+    else                         printf("  -> SQUARE\n");
 }
 
 static void detect_shapes(int W, int H) {
@@ -187,21 +201,22 @@ static void detect_shapes(int W, int H) {
 
     int blob_id = 0;
     int total = 0;
-    for (int y = 1; y < H - 1; y++) {
-        for (int x = 1; x < W - 1; x++) {
-            int idx = y * W + x;
-            if (visited[idx]) continue;
-            if (sobelOut[idx] == 0) continue;
+    for (uint32_t i = 0; i < n_edges; i++) {
+        uint32_t e = edge_list[i];
+        int x = (int)(e & 0xFFFF);
+        int y = (int)((e >> 16) & 0xFFFF);
+        int idx = y * W + x;
+        if (visited[idx]) continue;
+        /* sobelOut[idx] is guaranteed nonzero by construction */
 
-            int n = floodfill(x, y, W, H);
-            if (n < MIN_BLOB_SIZE) continue;
-            if (n > MAX_BLOB_SIZE) continue;
+        int n = floodfill(x, y, W, H);
+        if (n < MIN_BLOB_SIZE) continue;
+        if (n > MAX_BLOB_SIZE) continue;
 
-            classify_blob(n, blob_id);
-            blob_id++;
-            total++;
-            if (total >= 5) return;
-        }
+        classify_blob(n, blob_id);
+        blob_id++;
+        total++;
+        if (total >= 5) return;
     }
     if (total == 0) printf("  (no shapes)\n");
 }
@@ -212,7 +227,10 @@ static void run_sobel(void) {
     sob_set_width(FRAME_WIDTH);
     sob_set_thr(SOBEL_THRESHOLD);
 
+    n_edges = 0;
+
     volatile uint32_t *gray_w = (volatile uint32_t *) &grayscale[0];
+    volatile uint32_t *sob_w  = (volatile uint32_t *) &sobelOut[0];
 
     for (uint32_t y = 0; y < FRAME_HEIGHT; y++) {
         for (uint32_t wi = 0; wi < WORDS_PER_ROW; wi++) {
@@ -220,26 +238,22 @@ static void run_sobel(void) {
         }
         if (y >= 1) {
             uint32_t out_y = y - 1;
-            /* Drain row into a small local buffer, then horizontally
-             * dilate and write to sobelOut. Horizontal dilation closes
-             * the every-other-pixel gaps coming from grayscale aliasing.
+            volatile uint32_t *dst = &sob_w[out_y * WORDS_PER_ROW];
+            /* Drain row directly into SDRAM (word copy).
+             * Emit edge list entries for nonzero pixels.
              */
-            static uint8_t row_buf[FRAME_WIDTH];
             for (uint32_t wi = 0; wi < WORDS_PER_ROW; wi++) {
                 uint32_t w = sob_read_out(wi);
-                row_buf[wi*4 + 0] = (uint8_t)( w        & 0xFF);
-                row_buf[wi*4 + 1] = (uint8_t)((w >> 8)  & 0xFF);
-                row_buf[wi*4 + 2] = (uint8_t)((w >> 16) & 0xFF);
-                row_buf[wi*4 + 3] = (uint8_t)((w >> 24) & 0xFF);
+                dst[wi] = w;
+                /* Cheap path: if entire word is zero (most rows), skip byte checks */
+                if (w != 0 && n_edges < MAX_EDGES - 4) {
+                    uint32_t x_base = wi * 4;
+                    if (w & 0x000000FFU) edge_list[n_edges++] = (out_y << 16) | (x_base + 0);
+                    if (w & 0x0000FF00U) edge_list[n_edges++] = (out_y << 16) | (x_base + 1);
+                    if (w & 0x00FF0000U) edge_list[n_edges++] = (out_y << 16) | (x_base + 2);
+                    if (w & 0xFF000000U) edge_list[n_edges++] = (out_y << 16) | (x_base + 3);
+                }
             }
-            /* 1D dilation: out[x] = max(row[x-1], row[x], row[x+1]) */
-            sobelOut[out_y * FRAME_WIDTH + 0] = row_buf[0] | row_buf[1];
-            for (uint32_t x = 1; x < FRAME_WIDTH - 1; x++) {
-                uint8_t r = row_buf[x-1] | row_buf[x] | row_buf[x+1];
-                sobelOut[out_y * FRAME_WIDTH + x] = r;
-            }
-            sobelOut[out_y * FRAME_WIDTH + FRAME_WIDTH - 1] =
-                row_buf[FRAME_WIDTH - 2] | row_buf[FRAME_WIDTH - 1];
             sob_ack_row();
         }
     }
@@ -285,6 +299,7 @@ int main(void) {
         run_sobel();
         profile_read(&cycles, &stall, &idle);
         print_stage("sobel", cycles, stall, idle);
+        printf("edges=%u\n", n_edges);
 
         profile_reset();
         detect_shapes(FRAME_WIDTH, FRAME_HEIGHT);
