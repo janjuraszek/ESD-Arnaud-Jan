@@ -192,7 +192,7 @@ module camera #(parameter [7:0] customInstructionId = 8'd0,
 	      end
 	  end
   
-  wire [31:0] s_grayscalePixelWord = {gray_pixel_1_prev, gray_pixel_2_prev, gray_pixel_1, gray_pixel_2};
+  wire [31:0] s_grayscalePixelWord = {gray_pixel_2, gray_pixel_1, gray_pixel_2_prev, gray_pixel_1_prev};
   
   
   
