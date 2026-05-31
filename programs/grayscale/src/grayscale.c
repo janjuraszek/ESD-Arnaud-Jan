@@ -260,19 +260,19 @@ int main()
 				//uint32_t gray;
 				asm volatile ("l.nios_rrr %[g],%[a],%[b],10" : [g]"=r"(gray_pixels) : [a]"r"(w0), [b]"r"(w1));
 				// to display grayscale image
-				gray_w[half_line*80+group] = gray_pixels;
+				//gray_w[half_line*80+group] = gray_pixels;
 				// ----
 				
-				//uint8_t sobel_result = ci_do_sobel(gray_pixels);
+				uint8_t sobel_result = ci_do_sobel(gray_pixels);
 				/*
 				counter += (sobel_result & 0x1) ? 1 : 0;
 				counter += (sobel_result & 0x2) ? 1 : 0;
 				counter += (sobel_result & 0x4) ? 1 : 0;
 				counter += (sobel_result & 0x8) ? 1 : 0;
 				*/
-				//gray_pixels = ((sobel_result & 0x8) ? 0xFF000000U : 0U) | ((sobel_result & 0x4) ? 0x00FF0000U : 0U) | ((sobel_result & 0x2) ? 0x0000FF00U : 0U) | ((sobel_result & 0x1) ? 0x000000FFU : 0U);
+				gray_pixels = ((sobel_result & 0x8) ? 0xFF000000U : 0U) | ((sobel_result & 0x4) ? 0x00FF0000U : 0U) | ((sobel_result & 0x2) ? 0x0000FF00U : 0U) | ((sobel_result & 0x1) ? 0x000000FFU : 0U);
 				
-				//gray_w[half_line*80+group] = gray_pixels;
+				gray_w[half_line*80+group] = gray_pixels;
 				
 				
 			}
@@ -289,9 +289,9 @@ int main()
         for (uint32_t group = 0; group < 80; group++) {
 			uint32_t gray_pixels = convert_4_pixels(2*group+cur);
 			
-			//uint8_t sobel_result = ci_do_sobel(gray_pixels);
+			uint8_t sobel_result = ci_do_sobel(gray_pixels);
 			
-			//gray_pixels = ((sobel_result & 0x8) ? 0xFF000000U : 0U) | ((sobel_result & 0x4) ? 0x00FF0000U : 0U) | ((sobel_result & 0x2) ? 0x0000FF00U : 0U) | ((sobel_result & 0x1) ? 0x000000FFU : 0U);
+			gray_pixels = ((sobel_result & 0x8) ? 0xFF000000U : 0U) | ((sobel_result & 0x4) ? 0x00FF0000U : 0U) | ((sobel_result & 0x2) ? 0x0000FF00U : 0U) | ((sobel_result & 0x1) ? 0x000000FFU : 0U);
 				
 			gray_w[(NR_BATCHES-1)*80+group] = gray_pixels;
 			/*
@@ -302,6 +302,11 @@ int main()
 			* */
 			
 		}
+
+        printf("gray bytes: ");
+                for (int i = 0; i < 12; i++)
+                    printf("%d ", grayscale[i + 150000]);
+                printf("\n");
 		//printf("%u\n", counter);
 		
 
