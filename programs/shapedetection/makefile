@@ -1,5 +1,5 @@
 # BEGIN: You can modify the following region
-PROJECT = objectdetect
+PROJECT = shapedetection
 TOOLCHAIN ?= or1k-elf
 DEBUG ?= 0
 # TARGET can be either OR1300 (CS-473) or OR1420 (CS-476)

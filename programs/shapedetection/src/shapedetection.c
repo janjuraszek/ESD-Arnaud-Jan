@@ -21,7 +21,7 @@
 #endif
 
 // To show specific values for bbox, shape, and profiling
-//#define DEBUG
+#define DEBUG
 
 
 // Profile CI Functions
@@ -38,8 +38,7 @@ static inline void profile_read(uint32_t *c, uint32_t *s, uint32_t *i)
 }
 static inline void print_stage(const char *n, uint32_t c, uint32_t s, uint32_t i)
 {
-    printf("[%-10s] cycles=%u  stall=%u  idle=%u",
-           n, c, s, i);
+    printf("[%-10s] cycles=%u  stall=%u  idle=%u \n", n, c, s, i);
 }
 
 // Buffers 
@@ -170,28 +169,6 @@ static void detect_shapes(int W, int H)
     bbox_valid = 1;
 }
 
-// Draw bbox
-static void draw_bbox_rgb565(int W, int H)
-{
-    if (!bbox_valid) return;
-    const uint16_t WHITE = 0xFFFF;
-    int x0 = bbox_xmin, x1 = bbox_xmax;
-    int y0 = bbox_ymin, y1 = bbox_ymax;
-    // Edge cases
-    if (x0 < 0) x0 = 0; if (x1 >= W) x1 = W - 1;
-    if (y0 < 0) y0 = 0; if (y1 >= H) y1 = H - 1;
-
-    // Draw
-    uint16_t v = swap_u16(WHITE);
-    for (int x = x0; x <= x1; x++) {
-        rgb565[y0 * W + x] = v;
-        rgb565[y1 * W + x] = v;
-    }
-    for (int y = y0; y <= y1; y++) {
-        rgb565[y * W + x0] = v;
-        rgb565[y * W + x1] = v;
-    }
-}
 
 int main(void)
 {
@@ -276,8 +253,7 @@ int main(void)
         print_stage("detect", cycles, stall, idle);
         #endif
 
-        // Draw bounding box after shape found
-        draw_bbox_rgb565(W, H);
+        
 
         printf("-\n");
     }
